@@ -6,6 +6,11 @@ const {
   postToDevto,
 } = require("../services/devtoService");
 const { postToLinkedIn } = require("../services/linkedinService");
+const {
+  extractImagesFromMarkdown,
+  extractImagesFromHtml,
+} = require("../routes/extractImages");
+const { htmlToMarkdown } = require("../routes/htmlToMarkdown");
 
 // Cross post latest article
 router.post("/cross-post", async (req, res) => {
@@ -15,34 +20,74 @@ router.post("/cross-post", async (req, res) => {
     let article;
     if (source === "devto") {
       article = await fetchLatestDevtoPost(process.env.DEVTO_API_KEY);
-      console.log('Dev.to article:', article)
+      console.log("Dev.to article:", article);
+      const images = extractImagesFromMarkdown(article.body_markdown);
+      console.log("images:", images);
       await postToMedium(
         process.env.MEDIUM_INTEGRATION_TOKEN,
         article.title,
         article.body_markdown,
         article.url
       );
+      let linkedInContent =
+        content.replace(/<[^>]+>/g, "").substring(0, 200) + "...";
+      if (images.length > 0) {
+        linkedInContent += `\n\nImage: ${images[0]}`;
+      }
       await postToLinkedIn(
         process.env.LINKEDIN_ACCESS_TOKEN,
         article.title,
-        article.description,
+        linkedInContent,
         article.url
       );
     } else if (source === "medium") {
       const mediumRSSFeed = "https://medium.com/feed/@jessechong";
       const articles = await fetchMediumFeed(mediumRSSFeed);
       article = articles[0];
-      console.log('article from medium:', article[0]);
+      console.log("syncRoutes article from medium:", article);
+
+      const content = article["content:encoded"];
+      const images = extractImagesFromHtml(content);
+      console.log("syncRoutes images:", images);
+
+      const validImages = images.filter(
+        (img) => !img.includes("medium.com/_/stat")
+      );
+      console.log("syncRoutes validImages:", validImages);
+
+      // Convert HTML content to Markdown
+      let markdownContent = htmlToMarkdown(content);
+
+      // Add images to the top of the content
+      if (validImages.length > 0) {
+        // Add images in markdown format on top of the content
+        const imageMarkdown = validImages
+          .map((img) => `![](${img})`)
+          .join("\n");
+        markdownContent = `${imageMarkdown}\n\n${markdownContent}`;
+      }
+
+      // Add canonical URL
+      markdownContent += `\n\nOriginally published at [Medium](${article.link})`;
+
+      console.log("Markdown content for Dev.to:", markdownContent);
+
       await postToDevto(
         process.env.DEVTO_API_KEY,
         article.title,
-        article["content:encodedSnippet"] || "",
+        markdownContent,
         article.link
       );
+      let linkedInContent =
+        content.replace(/<[^>]+>/g, "").substring(0, 200) + "...";
+      if (images.length > 0) {
+        linkedInContent += `\n\nImage: ${images[0]}`;
+      }
+      // console.log('linkedInContent:', linkedInContent)
       await postToLinkedIn(
         process.env.LINKEDIN_ACCESS_TOKEN,
         article.title,
-        article["content:encodedSnippet"] || "",
+        linkedInContent,
         article.link
       );
     } else {

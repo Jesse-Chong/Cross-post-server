@@ -8,6 +8,7 @@ const MEDIUM_USER_ID = process.env.MEDIUM_USER_ID;
 const fetchMediumFeed = async (feedUrl) => {
   try {
     const feed = await parser.parseURL(feedUrl);
+    console.log(feed.items);
     return feed.items;
   } catch (error) {
     console.error("Error fetching Medium RSS feed:", error);
@@ -49,7 +50,7 @@ const postToMedium = async (token, title, content, canonicalUrl) => {
 
 module.exports = {
   fetchMediumFeed,
-  postToMedium,
+  postToMedium
 };
 
 // This is used once to get my medium user id

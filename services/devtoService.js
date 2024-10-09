@@ -17,7 +17,8 @@ const postToDevto = async (apiKey, title, content, canonicalUrl) => {
         headers: { "api-key": apiKey }
       }
     );
-    console.log("Post shared on Dev.to:");
+    console.log("DevtoService Post shared on Dev.to:", response.data);
+    return response.data;
   } catch (error) {
     console.error("Error posting to Dev.to:", error);
   }
@@ -30,6 +31,7 @@ const fetchLatestDevtoPost = async (apiKey) => {
       headers: { "api-key": apiKey },
       params: { per_page: 1 }
     });
+    console.log('dev posts:', response.data[0]);
     return response.data[0];
   } catch (error) {
     console.error("Error fetching latest Dev.to post:", error);
@@ -39,5 +41,5 @@ const fetchLatestDevtoPost = async (apiKey) => {
 
 module.exports = {
   postToDevto,
-  fetchLatestDevtoPost,
+  fetchLatestDevtoPost
 };

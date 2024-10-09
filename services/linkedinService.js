@@ -49,7 +49,7 @@ const postToLinkedIn = async (accessToken, title, content, articleUrl) => {
         },
       }
     );
-    console.log("Post shared on LinkedIn:");
+    console.log("Post shared on LinkedIn:", response.data);
     return response.data;
   } catch (error) {
     console.error(
@@ -62,5 +62,5 @@ const postToLinkedIn = async (accessToken, title, content, articleUrl) => {
 
 module.exports = {
   getLinkedInProfile,
-  postToLinkedIn,
+  postToLinkedIn
 };
