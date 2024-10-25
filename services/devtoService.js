@@ -1,7 +1,7 @@
 const axios = require("axios");
 
 // Helper function to post to DEV.to
-const postToDevto = async (apiKey, title, content, canonicalUrl) => {
+const postToDevto = async (apiKey, title, content, canonicalUrl, tags = []) => {
   try {
     const response = await axios.post(
       "https://dev.to/api/articles",
@@ -10,14 +10,15 @@ const postToDevto = async (apiKey, title, content, canonicalUrl) => {
           title: title,
           published: true,
           canonical_url: canonicalUrl,
-          body_markdown: `${content}`
+          body_markdown: content,
+          tags: tags
         },
       },
       {
         headers: { "api-key": apiKey }
       }
     );
-    console.log("DevtoService Post shared on Dev.to:", response.data);
+
     return response.data;
   } catch (error) {
     console.error("Error posting to Dev.to:", error);
@@ -31,7 +32,6 @@ const fetchLatestDevtoPost = async (apiKey) => {
       headers: { "api-key": apiKey },
       params: { per_page: 1 }
     });
-    console.log('dev posts:', response.data[0]);
     return response.data[0];
   } catch (error) {
     console.error("Error fetching latest Dev.to post:", error);

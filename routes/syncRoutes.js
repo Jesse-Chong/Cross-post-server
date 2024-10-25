@@ -10,7 +10,7 @@ const {
   extractImagesFromMarkdown,
   extractImagesFromHtml,
 } = require("../routes/extractImages");
-const { htmlToMarkdown } = require("../routes/htmlToMarkdown");
+const { htmlToContentConverter } = require("./htmlToContentConverter");
 
 // Cross post latest article
 router.post("/cross-post", async (req, res) => {
@@ -45,19 +45,13 @@ router.post("/cross-post", async (req, res) => {
       const articles = await fetchMediumFeed(mediumRSSFeed);
       article = articles[0];
       console.log("syncRoutes article from medium:", article);
-
       const content = article["content:encoded"];
       const images = extractImagesFromHtml(content);
-      console.log("syncRoutes images:", images);
-
       const validImages = images.filter(
         (img) => !img.includes("medium.com/_/stat")
       );
-      console.log("syncRoutes validImages:", validImages);
-
       // Convert HTML content to Markdown
-      let markdownContent = htmlToMarkdown(content);
-
+      let markdownContent = htmlToContentConverter(content, "devto");
       // Add images to the top of the content
       if (validImages.length > 0) {
         // Add images in markdown format on top of the content
@@ -66,36 +60,46 @@ router.post("/cross-post", async (req, res) => {
           .join("\n");
         markdownContent = `${imageMarkdown}\n\n${markdownContent}`;
       }
-
+      // Use the link provided in the RSS feed
+      const publicMediumUrl = article.link.split("?")[0]; // Remove any query parameters
       // Add canonical URL
-      markdownContent += `\n\nOriginally published at [Medium](${article.link})`;
-
-      console.log("Markdown content for Dev.to:", markdownContent);
-
+      markdownContent += `\n\nOriginally published at [Medium](${publicMediumUrl})`;
+      // Ensure tags are extracted correctly
+      const tags = article.categories || [];
+      // Map Medium tags to Dev.to tags
+      const devtoTags = tags
+        .map((tag) => tag.toLowerCase().replace(/[^a-z0-9]/g, "")) // Remove non-alphanumeric characters
+        .filter((tag) => tag.length > 0) // Remove empty tags
+        .slice(0, 4); // Dev.to allows up to 4 tags
       await postToDevto(
         process.env.DEVTO_API_KEY,
         article.title,
         markdownContent,
-        article.link
+        publicMediumUrl,
+        devtoTags
       );
-      let linkedInContent =
-        content.replace(/<[^>]+>/g, "").substring(0, 200) + "...";
-      if (images.length > 0) {
-        linkedInContent += `\n\nImage: ${images[0]}`;
+      // Format content for LinkedIn
+      let linkedInContent = htmlToContentConverter(content, "linkedin");
+      // Truncate the content for LinkedIn's character limit
+      linkedInContent =
+        linkedInContent.substring(0, 1200) +
+        (linkedInContent.length > 1200 ? "..." : "");
+      // Add image to the content if available
+      if (validImages.length > 0) {
+        linkedInContent = `${validImages[0]}\n\n${linkedInContent}`;
       }
-      // console.log('linkedInContent:', linkedInContent)
       await postToLinkedIn(
         process.env.LINKEDIN_ACCESS_TOKEN,
         article.title,
         linkedInContent,
-        article.link
+        publicMediumUrl,
+        tags
       );
     } else {
       return res
         .status(400)
-        .send('Invalid source specified. Use "devto" or "medium".');
+        .send('Invalid source specified. Use "devto" or "`medium`".');
     }
-
     res.send(`Latest ${source} post has been cross-posted successfully!`);
   } catch (error) {
     console.error("Error cross-posting:", error);

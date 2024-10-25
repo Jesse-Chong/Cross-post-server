@@ -40,7 +40,7 @@ router.get("/auth/linkedin/callback", async (req, res) => {
       params,
       {
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Type": "application/x-www-form-urlencoded"
         },
       }
     );

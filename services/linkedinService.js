@@ -1,5 +1,4 @@
 const axios = require("axios");
-
 const USER_URN = process.env.USER_URN;
 
 // Function to get LinkedIn profile and URN using access token
@@ -10,12 +9,8 @@ const getLinkedInProfile = async (accessToken) => {
         Authorization: `Bearer ${accessToken}`
       },
     });
-
     const profileData = response.data;
-
     const linkedinUrn = `urn:li:person:${profileData.sub}`;
-    console.log("LinkedIn URN:", linkedinUrn);
-
     return linkedinUrn;
   } catch (error) {
     console.error(
@@ -27,15 +22,42 @@ const getLinkedInProfile = async (accessToken) => {
 };
 
 // Helper function to post to LinkedIn
-const postToLinkedIn = async (accessToken, title, content, articleUrl) => {
+const postToLinkedIn = async (
+  accessToken,
+  title,
+  content,
+  articleUrl,
+  tags
+) => {
   try {
+    // Format tags with a '#' before each tag, removing any existing 'hashtag#'
+    // and joining multi-word or hyphenated tags with camelCase
+    const formattedTags = tags
+      .map((tag) => {
+        // Remove any existing 'hashtag#' prefix
+        tag = tag.replace(/^hashtag#/, "");
+        // Convert hyphenated or space-separated words to camelCase
+        tag = tag.replace(/[-\s]+(.)?/g, (_, c) => (c ? c.toUpperCase() : ""));
+        return `#${tag}`;
+      })
+      .join(" ");
+
+    // Construct the post text
+    const postText = `${title}
+
+${content}
+
+Read more at: ${articleUrl}
+
+${formattedTags}`;
+
     const response = await axios.post(
       "https://api.linkedin.com/v2/shares",
       {
         owner: `urn:li:person:${USER_URN}`,
         subject: title,
         text: {
-          text: `${title}\n\n${content} \n\nRead more at: ${articleUrl}`
+          text: postText
         },
         distribution: {
           linkedInDistributionTarget: {}
@@ -45,7 +67,7 @@ const postToLinkedIn = async (accessToken, title, content, articleUrl) => {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
-          "X-Restli-Protocol-Version": "2.0.0" // This is often required for LinkedIn API
+          "X-Restli-Protocol-Version": "2.0.0"
         },
       }
     );
